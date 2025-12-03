@@ -96,6 +96,7 @@ uart:
                 case S_SUM:
                   if (sum == c) {
                     // Frame OK
+                    id(shunt${shunt_id}_last_frame_ms) = millis();
                     const float voltage_v = decivolt / 100.0f;
                     const float current_a = static_cast<int32_t>(currentmah_raw) / 1000.0f;
                     const float capacity_ah = capamah / 1000.0f;
@@ -114,6 +115,26 @@ uart:
                   continue;
               }
             }
+
+
+globals:
+  - id: shunt${shunt_id}_last_frame_ms
+    type: uint32_t
+    restore_value: no
+
+
+binary_sensor:
+  - platform: template
+    name: "${shunt_name} Online"
+    id: shunt${shunt_id}_online_status
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: |-
+      const uint32_t last = id(shunt${shunt_id}_last_frame_ms);
+      if (last == 0) {
+        return false;
+      }
+      return (millis() - last) <= 5000;
 
 
 sensor:
