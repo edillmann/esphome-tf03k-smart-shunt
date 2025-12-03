@@ -7,14 +7,12 @@ Expose TF03K coulomb-meter data to Home Assistant through ESPHome running on an 
 ## Hardware Needed
 - TF03K coulomb meter with shunt.
 - ESP32 dev board (3.3V UART). ESP8266 may work, but the config targets ESP32.
-- Level shifting or a resistor divider if your TF03K TX pin is 5V (ESP32 RX pins are not 5V tolerant).
 - Shared ground between the shunt and ESP32, plus a data lead from the shunt TX to the chosen ESP32 GPIO.
 
 ## Wiring
 - Connect the TF03K UART `TX` pin to the ESP32 RX pin defined by `uart_gpio` (default `GPIO17`).
 - Tie the TF03K ground to the ESP32 ground.
-- Power the TF03K/shunt from its supply rails; power the ESP32 from USB or a regulated 5V/3.3V source.
-- The integration only reads frames; the ESP32 TX pin is not used.
+- Power the TF03K/shunt from the esp32 VCC; power the ESP32 from USB or a regulated 5V/3.3V source.
 - Refer to `docs/TF03K communication specification.pdf` for the vendor pinout if your board silkscreen differs.
 
 ## ESPHome Configuration
