@@ -34,12 +34,8 @@
 
 ## Pin Description (from schematic diagram)
 
-- **RXD:** TF03 receive pin (only need TF03 data; can disconnect otherwise)  
-- **TXD:** TF03 transmission pin  
-- **GND:** Ground  
-- **VCC:** 3–5V power supply (must be externally powered)
+- **RXD:** Do not connect
+- **TXD:** to ESP32 GPIO (GPIO17) by default
+- **GND:** to ESP32 GND
+- **VCC:** to ESP32 VCC
 
-**Important notes:**
-
-- VCC and GND must connect to external power.  
-- Interface is **not RS-232**; must use **TTL level**.
