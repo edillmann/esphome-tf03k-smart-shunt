@@ -241,7 +241,7 @@ sensor:
     state_class: "total_increasing"
     device_class: "energy"
     unit_of_measurement: kWh
-    restore: true
+    restore: ${restore_counters}
     accuracy_decimals: 3
     filters:
       # Multiplication factor from W to kW is 0.001
@@ -255,7 +255,7 @@ sensor:
     device_class: "energy"
     unit_of_measurement: kWh
     accuracy_decimals: 3
-    restore: true
+    restore: ${restore_counters}
     filters:
       # Multiplication factor from W to kW is 0.001
       - multiply: 0.001

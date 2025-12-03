@@ -26,6 +26,7 @@ Tunables (via `substitutions` in whichever entry YAML you use):
 - `device_name` / `friendly_name`: hostname and display name.
 - `uart_gpio`: ESP32 pin connected to TF03K TX.
 - `refresh_interval`: publish interval for the exposed sensors (raw values are updated every frame).
+- `restore_counters`: whether daily charged/discharged energy counters survive reboots by writing their state to flash (`true`) or reset on every restart (`false`).
 
 Secrets required in `secrets.yaml` (example):
 ```yaml
@@ -51,6 +52,9 @@ To only build the firmware without uploading:
 esphome compile esphome-LP-tf03k-smart-shunt.yaml
 ```
 If you use the Home Assistant add-on, copy the YAML files into your ESPHome folder, adjust substitutions/secrets, and click "Install".
+
+## Flash Wear Warning
+`restore_counters: true` persists the daily energy sensors by writing to flash. ESP32 flash endurance is finite, so frequent updates can accelerate wear. Set `restore_counters: false` if you don't need those counters to survive reboots.
 
 ## Home Assistant Entities
 Published sensors include:

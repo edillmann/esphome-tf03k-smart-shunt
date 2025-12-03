@@ -39,5 +39,6 @@ packages:
           uart_gpio: ${uart_gpio}
           shunt_id: 1
           shunt_name: Shunt
+          restore_counters: true
     ref: main
     refresh: 1d
