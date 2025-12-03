@@ -16,9 +16,13 @@ Expose TF03K coulomb-meter data to Home Assistant through ESPHome running on an 
 - Refer to `docs/TF03K communication specification.pdf` for the vendor pinout if your board silkscreen differs.
 
 ## ESPHome Configuration
-`esphome-tf03k-smart-shunt.yaml` is the entry point and includes the UART parser and sensors from `packages/tf03k_shunt.yaml`.
+Pick the entry point that fits your workflow:
+- `esphome-LP-tf03k-smart-shunt.yaml` (Local Package): uses the `packages/tf03k_shunt.yaml` file that lives in this repo. Choose this if you cloned the project and want to hack locally or build offline.
+- `esphome-RP-tf03k-smart-shunt.yaml` (Remote Package): uses ESPHome’s Remote Packages to pull `packages/tf03k_shunt.yaml` directly from GitHub (`main` branch, refresh daily). Choose this if you just want to drop a single YAML into ESPHome (e.g., HA add-on) and let it keep itself updated.
 
-Tunables (via `substitutions` in `esphome-tf03k-smart-shunt.yaml`):
+Both variants expose the same substitutions and sensors.
+
+Tunables (via `substitutions` in whichever entry YAML you use):
 - `device_name` / `friendly_name`: hostname and display name.
 - `uart_gpio`: ESP32 pin connected to TF03K TX.
 - `refresh_interval`: publish interval for the exposed sensors (raw values are updated every frame).
@@ -34,17 +38,17 @@ Add OTA/API passwords or other secrets as needed by your environment.
 ## Build and Upload
 1) Install ESPHome (CLI via `pipx install esphome` or the Home Assistant ESPHome add-on).
 2) Plug the ESP32 into USB and connect to this repo.
-3) Flash from the CLI:
+3) Flash from the CLI (replace the filename with `esphome-RP-tf03k-smart-shunt.yaml` if you prefer the Remote Package variant):
 ```bash
-esphome run esphome-tf03k-smart-shunt.yaml --device /dev/ttyUSB0
+esphome run esphome-LP-tf03k-smart-shunt.yaml --device /dev/ttyUSB0
 ```
 This builds, uploads, and shows logs. After the first flash, you can use OTA:
 ```bash
-esphome upload esphome-tf03k-smart-shunt.yaml
+esphome upload esphome-LP-tf03k-smart-shunt.yaml
 ```
 To only build the firmware without uploading:
 ```bash
-esphome compile esphome-tf03k-smart-shunt.yaml
+esphome compile esphome-LP-tf03k-smart-shunt.yaml
 ```
 If you use the Home Assistant add-on, copy the YAML files into your ESPHome folder, adjust substitutions/secrets, and click "Install".
 
@@ -60,4 +64,4 @@ Published sensors include:
 ## Troubleshooting
 - If you see no data, verify the TF03K TX voltage level and wiring (RX pin and ground).
 - Keep `uart_gpio` on a hardware UART-capable pin (default `GPIO17` on ESP32).
-- Use `esphome logs esphome-tf03k-smart-shunt.yaml` to watch incoming frames and parser output.***
+- Use `esphome logs esphome-LP-tf03k-smart-shunt.yaml` (or the RP file) to watch incoming frames and parser output.***
