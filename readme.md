@@ -1,0 +1,65 @@
+# TF03K Smart Shunt (ESPHome)
+
+Expose TF03K coulomb-meter data to Home Assistant through ESPHome running on an ESP32. The ESP listens on the shunt's UART output, decodes frames, and publishes battery metrics (state of charge, voltage, current, power, remaining time, daily charged/discharged energy).
+
+![](images/tf03k.png)
+
+## Hardware Needed
+- TF03K coulomb meter with shunt.
+- ESP32 dev board (3.3V UART). ESP8266 may work, but the config targets ESP32.
+- Level shifting or a resistor divider if your TF03K TX pin is 5V (ESP32 RX pins are not 5V tolerant).
+- Shared ground between the shunt and ESP32, plus a data lead from the shunt TX to the chosen ESP32 GPIO.
+
+## Wiring
+- Connect the TF03K UART `TX` pin to the ESP32 RX pin defined by `uart_gpio` (default `GPIO17`).
+- Tie the TF03K ground to the ESP32 ground.
+- Power the TF03K/shunt from its supply rails; power the ESP32 from USB or a regulated 5V/3.3V source.
+- The integration only reads frames; the ESP32 TX pin is not used.
+- Refer to `docs/TF03K communication specification.pdf` for the vendor pinout if your board silkscreen differs.
+
+## ESPHome Configuration
+`esphome-tf03k-smart-shunt.yaml` is the entry point and includes the UART parser and sensors from `packages/tf03k_shunt.yaml`.
+
+Tunables (via `substitutions` in `esphome-tf03k-smart-shunt.yaml`):
+- `device_name` / `friendly_name`: hostname and display name.
+- `uart_gpio`: ESP32 pin connected to TF03K TX.
+- `refresh_interval`: publish interval for the exposed sensors (raw values are updated every frame).
+
+Secrets required in `secrets.yaml` (example):
+```yaml
+wifi_ssid: "YourWiFi"
+wifi_password: "YourPassword"
+api_encryption_key: "generated-by-esphome"
+```
+Add OTA/API passwords or other secrets as needed by your environment.
+
+## Build and Upload
+1) Install ESPHome (CLI via `pipx install esphome` or the Home Assistant ESPHome add-on).
+2) Plug the ESP32 into USB and connect to this repo.
+3) Flash from the CLI:
+```bash
+esphome run esphome-tf03k-smart-shunt.yaml --device /dev/ttyUSB0
+```
+This builds, uploads, and shows logs. After the first flash, you can use OTA:
+```bash
+esphome upload esphome-tf03k-smart-shunt.yaml
+```
+To only build the firmware without uploading:
+```bash
+esphome compile esphome-tf03k-smart-shunt.yaml
+```
+If you use the Home Assistant add-on, copy the YAML files into your ESPHome folder, adjust substitutions/secrets, and click "Install".
+
+## Home Assistant Entities
+Published sensors include:
+- State of charge (%)
+- Voltage (V)
+- Battery capacity (Ah)
+- Current (A; charging/discharging signed)
+- Power (W) plus daily charged/discharged energy (kWh)
+- Remaining time (seconds)
+
+## Troubleshooting
+- If you see no data, verify the TF03K TX voltage level and wiring (RX pin and ground).
+- Keep `uart_gpio` on a hardware UART-capable pin (default `GPIO17` on ESP32).
+- Use `esphome logs esphome-tf03k-smart-shunt.yaml` to watch incoming frames and parser output.***

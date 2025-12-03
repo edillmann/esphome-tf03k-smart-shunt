@@ -1,0 +1,261 @@
+uart:
+  # UART2 - compteur coulombmètre (voir main/coulombmt.c)
+  - id: coulomb_meter_uart
+    rx_pin: ${uart_gpio}
+    baud_rate: 9600
+    data_bits: 8
+    stop_bits: 1
+    parity: NONE
+    rx_buffer_size: 256
+    debug:
+      direction: RX
+      dummy_receiver: true
+      after:
+        timeout: 20ms
+        bytes: 16
+      sequence:
+        - lambda: |-
+            // Parse coulomb meter frames (see main/coulombmt.c) and feed ESPHome sensors.
+            enum ParseState { S_SOF, S_SOC, S_VOLTAGE, S_CAPACITY, S_CURRENT, S_REMAINING, S_SUM };
+            static ParseState ps = S_SOF;
+            static uint8_t shift = 0;
+            static uint8_t soc = 0;
+            static uint16_t decivolt = 0;
+            static uint32_t capamah = 0;
+            static uint32_t currentmah_raw = 0;
+            static uint32_t remainsec = 0;
+            static uint8_t sum = 0;
+
+            auto reset_frame = [&]() {
+              soc = 0;
+              decivolt = 0;
+              capamah = 0;
+              currentmah_raw = 0;
+              remainsec = 0;
+              sum = 0;
+            };
+
+            if (direction != UART_DIRECTION_RX) {
+              return;
+            }
+
+            for (auto c : bytes) {
+              switch (ps) {
+                case S_SOF:
+                  if (c == 0xA5) {
+                    reset_frame();
+                    ps = S_SOC;
+                    sum = c;
+                  }
+                  continue;
+                case S_SOC:
+                  soc = c;
+                  sum += c;
+                  ps = S_VOLTAGE;
+                  shift = 8;
+                  continue;
+                case S_VOLTAGE:
+                  decivolt |= static_cast<uint16_t>(c) << shift;
+                  sum += c;
+                  if (shift == 0) {
+                    ps = S_CAPACITY;
+                    shift = 24;
+                  } else {
+                    shift -= 8;
+                  }
+                  continue;
+                case S_CAPACITY:
+                  capamah |= static_cast<uint32_t>(c) << shift;
+                  sum += c;
+                  if (shift == 0) {
+                    ps = S_CURRENT;
+                    shift = 24;
+                  } else {
+                    shift -= 8;
+                  }
+                  continue;
+                case S_CURRENT:
+                  currentmah_raw |= static_cast<uint32_t>(c) << shift;
+                  sum += c;
+                  if (shift == 0) {
+                    ps = S_REMAINING;
+                    shift = 16;
+                  } else {
+                    shift -= 8;
+                  }
+                  continue;
+                case S_REMAINING:
+                  remainsec |= static_cast<uint32_t>(c) << shift;
+                  sum += c;
+                  if (shift == 0) {
+                    ps = S_SUM;
+                  } else {
+                    shift -= 8;
+                  }
+                  continue;
+                case S_SUM:
+                  if (sum == c) {
+                    // Frame OK
+                    const float voltage_v = decivolt / 100.0f;
+                    const float current_a = static_cast<int32_t>(currentmah_raw) / 1000.0f;
+                    const float capacity_ah = capamah / 1000.0f;
+                    const float remaining_s = remainsec;
+                    id(shunt${shunt_id}_soc_raw).publish_state(soc);
+                    id(shunt${shunt_id}_capacity_ah_raw).publish_state(capacity_ah);
+                    id(shunt${shunt_id}_voltage_raw).publish_state(voltage_v);
+                    id(shunt${shunt_id}_current_raw).publish_state(current_a);
+                    id(shunt${shunt_id}_remaining_seconds_raw).publish_state(remaining_s);
+                  } else {
+                    ESP_LOGD("cm_parse", "bad crc %02x != %02x", static_cast<uint8_t>(sum), c);
+                  }
+                  ps = S_SOF;
+                  shift = 0;
+                  reset_frame();
+                  continue;
+              }
+            }
+
+
+sensor:
+  # Capteurs internes mis à jour à chaque trame UART (1s)
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_soc_raw
+    update_interval: never
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_voltage_raw
+    update_interval: never
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_capacity_ah_raw
+    update_interval: never
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_current_raw
+    update_interval: never
+    on_value:
+      then:
+        - component.update: shunt${shunt_id}_power_w_raw
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_remaining_seconds_raw
+    update_interval: never
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_power_w_raw
+    update_interval: never
+    lambda: |-
+      if (isnan(id(shunt${shunt_id}_voltage_raw).state) || isnan(id(shunt${shunt_id}_current_raw).state)) {
+        return NAN;
+      }
+      return id(shunt${shunt_id}_voltage_raw).state * id(shunt${shunt_id}_current_raw).state;
+    on_value:
+      then:
+        - component.update: shunt${shunt_id}_charging_power_raw
+        - component.update: shunt${shunt_id}_discharging_power_raw
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_charging_power_raw
+    update_interval: never
+    lambda: |-
+      if (isnan(id(shunt${shunt_id}_power_w_raw).state)) {
+        return NAN;
+      }
+      const float power_w = id(shunt${shunt_id}_power_w_raw).state;
+      return power_w > 0 ? power_w : 0;
+  - platform: template
+    internal: true
+    id: shunt${shunt_id}_discharging_power_raw
+    update_interval: never
+    lambda: |-
+      if (isnan(id(shunt${shunt_id}_power_w_raw).state)) {
+        return NAN;
+      }
+      const float power_w = id(shunt${shunt_id}_power_w_raw).state;
+      return power_w < 0 ? -power_w : 0;
+
+  # Capteurs publiés avec un rafraîchissement réduit
+  - platform: template
+    name: "${shunt_name} State of charge"
+    state_class: "measurement"
+    device_class: "battery"
+    unit_of_measurement: "%"
+    id: shunt${shunt_id}_soc
+    update_interval: ${refresh_interval}
+    lambda: |-
+      return id(shunt${shunt_id}_soc_raw).state;
+  - platform: template
+    name: "${shunt_name} Voltage"
+    state_class: "measurement"
+    device_class: "voltage"
+    id: shunt${shunt_id}_voltage
+    accuracy_decimals: 2
+    unit_of_measurement: V
+    update_interval: ${refresh_interval}
+    lambda: |-
+      return id(shunt${shunt_id}_voltage_raw).state;
+  - platform: template
+    name: "${shunt_name} Battery capacity"
+    state_class: "measurement"
+    device_class: "battery"
+    unit_of_measurement: Ah
+    id: shunt${shunt_id}_capacity_ah
+    update_interval: ${refresh_interval}
+    lambda: |-
+      return id(shunt${shunt_id}_capacity_ah_raw).state;
+  - platform: template
+    name: "${shunt_name} Current"
+    state_class: "measurement"
+    device_class: "current"
+    id: shunt${shunt_id}_current
+    accuracy_decimals: 2
+    unit_of_measurement: A
+    update_interval: ${refresh_interval}
+    lambda: |-
+      return id(shunt${shunt_id}_current_raw).state;
+  - platform: template
+    name: "${shunt_name} Remaining time"
+    state_class: "measurement"
+    device_class: "duration"
+    unit_of_measurement: s
+    id: shunt${shunt_id}_remaining_seconds
+    update_interval: 60s
+    lambda: |-
+      return id(shunt${shunt_id}_remaining_seconds_raw).state;
+  - platform: template
+    name: "${shunt_name} power"
+    state_class: "measurement"
+    device_class: "power"
+    unit_of_measurement: W
+    accuracy_decimals: 1
+    id: shunt${shunt_id}_power
+    update_interval: ${refresh_interval}
+    lambda: |-
+      return id(shunt${shunt_id}_power_w_raw).state;
+  - platform: total_daily_energy
+    name: "${shunt_name} Daily charged energy"
+    id: shunt${shunt_id}_daily_charged_energy
+    power_id: shunt${shunt_id}_charging_power_raw
+    method: trapezoid
+    state_class: "total_increasing"
+    device_class: "energy"
+    unit_of_measurement: kWh
+    restore: true
+    accuracy_decimals: 3
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+  - platform: total_daily_energy
+    name: "${shunt_name} Daily discharged energy"
+    id: shunt${shunt_id}_daily_discharged_energy
+    power_id: shunt${shunt_id}_discharging_power_raw
+    method: trapezoid
+    state_class: "total_increasing"
+    device_class: "energy"
+    unit_of_measurement: kWh
+    accuracy_decimals: 3
+    restore: true
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
