@@ -1,0 +1,8 @@
+{
+  "domain": "tf03k_shunt",
+  "name": "TF03K Shunt",
+  "version": "1.0.0",
+  "dependencies": ["uart"],
+  "requirements": [],
+  "codeowners": ["@edillmann"]
+}

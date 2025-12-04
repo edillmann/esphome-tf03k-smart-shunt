@@ -28,6 +28,12 @@ Tunables (via `substitutions` in whichever entry YAML you use):
 - `refresh_interval`: publish interval for the exposed sensors (raw values are updated every frame).
 - `restore_counters`: whether daily charged/discharged energy counters survive reboots by writing their state to flash (`true`) or reset on every restart (`false`).
 
+### TF03K component
+UART parsing now lives in a dedicated ESPHome component (`components/tf03k_shunt`). The package wires it up automatically and exposes:
+- State of charge, voltage, capacity, current, power, remaining time, and an online status binary sensor.
+- Internal charging/discharging power channels that feed the daily energy integrators.
+- `publish_interval` (defaults to `refresh_interval`) to throttle how often the sensors publish, and `online_timeout` (defaults to 5s) to mark the link as down if no frame arrives.
+
 Secrets required in `secrets.yaml` (example):
 ```yaml
 wifi_ssid: "YourWiFi"
