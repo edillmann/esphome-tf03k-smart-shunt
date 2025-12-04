@@ -5,7 +5,8 @@ namespace tf03k_shunt {
 
 void TF03KShunt::dump_config() {
   ESP_LOGCONFIG(TAG, "TF03K Shunt");
-  this->check_uart_settings(9600, 8, uart::UART_CONFIG_PARITY_NONE, 1);
+  // baud_rate, stop_bits, parity, data_bits (order matches UARTDevice helper signature)
+  this->check_uart_settings(9600, 1, uart::UART_CONFIG_PARITY_NONE, 8);
   ESP_LOGCONFIG(TAG, "  Publish interval: %ums", publish_interval_ms_);
   ESP_LOGCONFIG(TAG, "  Online timeout: %ums", online_timeout_ms_);
   LOG_SENSOR("  ", "State of charge", state_of_charge_sensor_);
@@ -29,6 +30,7 @@ void TF03KShunt::loop() {
 
   const uint32_t now = millis();
   if (this->has_values_) {
+    this->publish_power_values_();
     if (this->last_publish_ms_ == 0 || now - this->last_publish_ms_ >= this->publish_interval_ms_) {
       this->publish_values_();
       this->last_publish_ms_ = now;
@@ -92,8 +94,6 @@ void TF03KShunt::process_frame_() {
 }
 
 void TF03KShunt::publish_values_() {
-  const float charging_power = this->power_ > 0 ? this->power_ : 0.0f;
-  const float discharging_power = this->power_ < 0 ? -this->power_ : 0.0f;
 
   if (state_of_charge_sensor_ != nullptr)
     state_of_charge_sensor_->publish_state(this->state_of_charge_);
@@ -105,6 +105,12 @@ void TF03KShunt::publish_values_() {
     current_sensor_->publish_state(this->current_);
   if (remaining_time_sensor_ != nullptr)
     remaining_time_sensor_->publish_state(this->remaining_time_);
+}
+
+void TF03KShunt::publish_power_values_() {
+  const float charging_power = this->power_ > 0 ? this->power_ : 0.0f;
+  const float discharging_power = this->power_ < 0 ? -this->power_ : 0.0f;
+
   if (power_sensor_ != nullptr)
     power_sensor_->publish_state(this->power_);
   if (charging_power_sensor_ != nullptr)

@@ -33,6 +33,8 @@ tf03k_shunt:
       - throttle: 60s
   power:
     name: "${shunt_name} Power"
+    filters:
+      - throttle: ${refresh_interval}
   charging_power:
     id: shunt${shunt_id}_charging_power_raw
     internal: true
@@ -53,6 +55,7 @@ sensor:
     accuracy_decimals: 3
     filters:
       - multiply: 0.001
+      - throttle: ${refresh_interval}
   - platform: total_daily_energy
     name: "${shunt_name} Daily discharged energy"
     id: shunt${shunt_id}_daily_discharged_energy
@@ -65,3 +68,4 @@ sensor:
     restore: ${restore_counters}
     filters:
       - multiply: 0.001
+      - throttle: ${refresh_interval}

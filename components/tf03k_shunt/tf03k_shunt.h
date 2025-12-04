@@ -37,6 +37,7 @@ class TF03KShunt : public Component, public uart::UARTDevice {
   void handle_byte_(uint8_t byte);
   void process_frame_();
   void publish_values_();
+  void publish_power_values_();
   void update_online_state_(uint32_t now);
   void reset_frame_();
 
