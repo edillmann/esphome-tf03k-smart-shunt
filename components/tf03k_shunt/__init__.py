@@ -20,7 +20,7 @@ from esphome.const import (
 
 DEPENDENCIES = ["uart"]
 AUTO_LOAD = ["sensor", "binary_sensor"]
-CODEOWNERS = ["@ericbarch"]
+CODEOWNERS = ["@edillmann"]
 
 CONF_PUBLISH_INTERVAL = "publish_interval"
 CONF_ONLINE_TIMEOUT = "online_timeout"
