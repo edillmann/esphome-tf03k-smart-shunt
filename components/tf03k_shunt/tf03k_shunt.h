@@ -46,7 +46,7 @@ class TF03KShunt : public Component, public uart::UARTDevice {
   uint32_t last_frame_ms_{0};
   uint32_t last_publish_ms_{0};
   uint32_t publish_interval_ms_{5000};
-  uint32_t online_timeout_ms_{5000};
+  uint32_t online_timeout_ms_{60000};
   bool has_values_{false};
   bool online_state_{false};
   bool online_initialized_{false};
