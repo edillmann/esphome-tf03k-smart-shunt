@@ -16,7 +16,7 @@ tf03k_shunt:
   id: shunt${shunt_id}
   uart_id: tf03k_uart
   publish_interval: ${refresh_interval}
-  online_timeout: 5s
+  online_timeout: 60s
   online:
     name: "${shunt_name} Online"
   state_of_charge:
