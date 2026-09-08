@@ -108,8 +108,6 @@ async def to_code(config):
     cg.add(var.set_publish_interval(config[CONF_PUBLISH_INTERVAL]))
     cg.add(var.set_online_timeout(config[CONF_ONLINE_TIMEOUT]))
 
-    uart.request_wake_loop_on_rx();
-
     if CONF_STATE_OF_CHARGE in config:
         sens = await sensor.new_sensor(config[CONF_STATE_OF_CHARGE])
         cg.add(var.set_state_of_charge_sensor(sens))
